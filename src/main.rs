@@ -1,5 +1,9 @@
 use clap::{Args, Parser, Subcommand};
-use std::{mem::MaybeUninit, path::PathBuf};
+use std::{
+    fs::{self, File},
+    mem::MaybeUninit,
+    path::PathBuf,
+};
 
 #[derive(Parser)]
 struct Cli {
@@ -55,16 +59,19 @@ fn main() {
     let base = &args.base.trim();
 
     match args.mode {
-        Encode(to_encode) => match to_encode.encode_type {
-            EncodeType::String { hide } => println!("{}", encode(base, hide.as_bytes())),
-            EncodeType::Random { length } => {
-                let mut buf = vec![0; length];
-                getrandom::fill(&mut buf).unwrap();
+        Encode(to_encode) => println!(
+            "{}",
+            match to_encode.encode_type {
+                EncodeType::String { hide } => encode(base, hide.as_bytes()),
+                EncodeType::Random { length } => {
+                    let mut buf = vec![0; length];
+                    getrandom::fill(&mut buf).unwrap();
 
-                println!("{}", encode(base, &buf));
+                    encode(base, &buf)
+                }
+                EncodeType::File { path } => encode(base, &fs::read(path).unwrap()),
             }
-            EncodeType::File { path } => todo!(),
-        },
+        ),
         Decode(to_decode) => match to_decode.decode_type {
             DecodeType::String => println!("{}", str::from_utf8(&decode(base)).unwrap()),
             DecodeType::StringLossy => {
