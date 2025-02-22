@@ -52,7 +52,7 @@ fn main() {
     use Mode::{Decode, Encode};
 
     let args = Cli::parse();
-    let base = &args.base;
+    let base = &args.base.trim();
 
     match args.mode {
         Encode(to_encode) => match to_encode.encode_type {
@@ -70,7 +70,11 @@ fn main() {
             DecodeType::StringLossy => {
                 println!("{}", String::from_utf8_lossy(&decode(base)))
             }
-            DecodeType::Bytes => todo!(),
+            DecodeType::Bytes => {
+                for byte in decode(base) {
+                    print!("{byte} ");
+                }
+            }
             DecodeType::File { path } => todo!(),
         },
     }
