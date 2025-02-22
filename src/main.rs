@@ -38,9 +38,11 @@ struct Decode {
 
 #[derive(Subcommand, Debug)]
 enum DecodeType {
-    /// Unhides the hidden string from `base`
+    /// Prints as string
     String,
-    /// Unhides the hidden bytes from `base`
+    /// Prints as lossy string
+    StringLossy,
+    /// Prints as numbers
     Bytes,
     /// Unhides the hidden bytes from `base` into `path`
     File { path: PathBuf },
@@ -65,6 +67,9 @@ fn main() {
         },
         Decode(to_decode) => match to_decode.decode_type {
             DecodeType::String => println!("{}", str::from_utf8(&decode(base)).unwrap()),
+            DecodeType::StringLossy => {
+                println!("{}", String::from_utf8_lossy(&decode(base)))
+            }
             DecodeType::Bytes => todo!(),
             DecodeType::File { path } => todo!(),
         },
