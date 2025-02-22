@@ -1,13 +1,16 @@
+#![feature(bstr)]
+#![feature(array_chunks)]
+
 use clap::{Args, Parser, Subcommand};
 use std::{
+    bstr::{ByteStr, ByteString},
     fs::{self},
     path::PathBuf,
 };
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(value_parser = clap::builder::NonEmptyStringValueParser::new())]
-    base: String,
+    base: ByteString,
     #[command(subcommand)]
     mode: Mode,
 }
@@ -26,11 +29,9 @@ struct Encode {
 #[derive(Subcommand, Debug)]
 enum EncodeType {
     /// Hide the string `hide` in `base`
-    String { hide: String },
+    Normal { hide: ByteString },
     /// Hides `length` random bytes in base
     Random { length: usize },
-    /// Hides the contents of `path` in base
-    File { path: PathBuf },
 }
 
 #[derive(Args, Debug)]
@@ -55,20 +56,19 @@ fn main() {
     use Mode::{Decode, Encode};
 
     let args = Cli::parse();
-    let base = &args.base.trim();
+    let base = args.base.as_ref();
 
     match args.mode {
         Encode(to_encode) => println!(
             "{}",
             match to_encode.encode_type {
-                EncodeType::String { hide } => encode(base, hide.as_bytes()),
+                EncodeType::Normal { hide } => encode(base, &hide),
                 EncodeType::Random { length } => {
                     let mut buf = vec![0; length];
                     getrandom::fill(&mut buf).unwrap();
 
                     encode(base, &buf)
                 }
-                EncodeType::File { path } => encode(base, &fs::read(path).unwrap()),
             }
         ),
         Decode(to_decode) => match to_decode.decode_type {
@@ -87,18 +87,19 @@ fn main() {
 }
 
 /// Hides `hide` in `base`
-fn encode(base: &str, hide: &[u8]) -> String {
+fn encode(base: &ByteStr, hide: &[u8]) -> ByteString {
     let hide_per_char = (hide.len() / base.len()).max(1);
     let mut hide_chunks = hide.chunks(hide_per_char);
 
-    let mut out = String::new();
+    let mut out = ByteString(Vec::new());
 
-    for char in base.chars() {
-        out.push(char);
+    for char in base.iter() {
+        out.push(*char);
 
         if let Some(chunk) = hide_chunks.next() {
             for byte in chunk {
-                out.push(byte_to_variation_selector(*byte));
+                let bytes = byte_to_variation_selector(*byte).to_ne_bytes();
+                out.extend_from_slice(&bytes);
             }
         }
     }
@@ -106,7 +107,8 @@ fn encode(base: &str, hide: &[u8]) -> String {
     // Handle remainder
     if let Some(chunk) = hide_chunks.next() {
         for byte in chunk {
-            out.push(byte_to_variation_selector(*byte));
+            let bytes = byte_to_variation_selector(*byte).to_ne_bytes();
+            out.extend_from_slice(&bytes);
         }
     }
 
@@ -114,10 +116,12 @@ fn encode(base: &str, hide: &[u8]) -> String {
 }
 
 // TODO: Be smart about interleaving len
-fn decode(str: &str) -> Vec<u8> {
+fn decode(str: &ByteStr) -> Vec<u8> {
     let mut out = Vec::new();
 
-    for char in str.chars() {
+    for char in str.array_chunks() {
+        let char = u32::from_ne_bytes(*char);
+
         if let Some(byte) = variant_selector_to_byte(char) {
             out.push(byte);
         }
