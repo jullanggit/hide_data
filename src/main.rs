@@ -1,7 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use std::{
-    fs::{self, File},
-    mem::MaybeUninit,
+    fs::{self},
     path::PathBuf,
 };
 
@@ -42,13 +41,13 @@ struct Decode {
 
 #[derive(Subcommand, Debug)]
 enum DecodeType {
-    /// Prints as string
+    /// Print as string
     String,
-    /// Prints as lossy string
+    /// Print as lossy string
     StringLossy,
-    /// Prints as numbers
+    /// Print as numbers
     Bytes,
-    /// Unhides the hidden bytes from `base` into `path`
+    /// Write to `path`
     File { path: PathBuf },
 }
 
@@ -82,7 +81,7 @@ fn main() {
                     print!("{byte} ");
                 }
             }
-            DecodeType::File { path } => todo!(),
+            DecodeType::File { path } => fs::write(path, decode(base)).unwrap(),
         },
     }
 }
