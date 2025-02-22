@@ -94,15 +94,16 @@ fn encode(base: &mut ByteString, hide: &[u8]) {
     for chunk in hide_chunks {
         for byte in chunk {
             let char = byte_to_variation_selector(*byte);
-            let mut bytes = [0; 4];
-            char.encode_utf8(&mut bytes);
 
-            base.splice(index..index, bytes);
-
-            index += 4;
+            for byte in char.encode_utf8(&mut [0; 4]).as_bytes() {
+                base.insert(index, *byte);
+                index += 1;
+            }
         }
 
-        index += 1;
+        if index < base.len() {
+            index += 1
+        };
     }
 }
 
