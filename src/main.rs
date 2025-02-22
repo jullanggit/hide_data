@@ -33,6 +33,8 @@ enum EncodeType {
     Normal { hide: ByteString },
     /// Hides `length` random bytes in base
     Random { length: usize },
+    /// Hides the contents of `path` in `base`
+    File { path: PathBuf },
 }
 
 #[derive(Args, Debug)]
@@ -67,6 +69,7 @@ fn main() {
 
                     encode(&mut args.base, &buf)
                 }
+                EncodeType::File { path } => encode(&mut args.base, &fs::read(path).unwrap()),
             };
             println!("{}", args.base)
         }
