@@ -73,7 +73,7 @@ fn main() {
 
 /// Hides `hide` in `base`
 fn encode(base: &str, hide: &[u8]) -> String {
-    let hide_per_char = hide.len() / base.len();
+    let hide_per_char = (hide.len() / base.len()).max(1);
     let mut hide_chunks = hide.chunks(hide_per_char);
 
     let mut out = String::new();
@@ -81,8 +81,10 @@ fn encode(base: &str, hide: &[u8]) -> String {
     for char in base.chars() {
         out.push(char);
 
-        for byte in hide_chunks.next().unwrap() {
-            out.push(byte_to_variation_selector(*byte));
+        if let Some(chunk) = hide_chunks.next() {
+            for byte in chunk {
+                out.push(byte_to_variation_selector(*byte));
+            }
         }
     }
 
