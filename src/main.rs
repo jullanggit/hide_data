@@ -55,64 +55,58 @@ enum DecodeType {
 fn main() {
     use Mode::{Decode, Encode};
 
-    let args = Cli::parse();
-    let base = args.base.as_ref();
+    let mut args = Cli::parse();
 
     match args.mode {
-        Encode(to_encode) => println!(
-            "{}",
+        Encode(to_encode) => {
             match to_encode.encode_type {
-                EncodeType::Normal { hide } => encode(base, &hide),
+                EncodeType::Normal { hide } => encode(&mut args.base, &hide),
                 EncodeType::Random { length } => {
                     let mut buf = vec![0; length];
                     getrandom::fill(&mut buf).unwrap();
 
-                    encode(base, &buf)
+                    encode(&mut args.base, &buf)
                 }
-            }
-        ),
-        Decode(to_decode) => match to_decode.decode_type {
-            DecodeType::String => println!("{}", str::from_utf8(&decode(base)).unwrap()),
-            DecodeType::StringLossy => {
-                println!("{}", String::from_utf8_lossy(&decode(base)))
-            }
-            DecodeType::Bytes => {
-                for byte in decode(base) {
-                    print!("{byte} ");
+            };
+            println!("{}", args.base)
+        }
+        Decode(to_decode) => {
+            let base = args.base.as_ref();
+            match to_decode.decode_type {
+                DecodeType::String => println!("{}", str::from_utf8(&decode(base)).unwrap()),
+                DecodeType::StringLossy => {
+                    println!("{}", String::from_utf8_lossy(&decode(base)))
                 }
-            }
-            DecodeType::File { path } => fs::write(path, decode(base)).unwrap(),
-        },
+                DecodeType::Bytes => {
+                    for byte in decode(base) {
+                        print!("{byte} ");
+                    }
+                }
+                DecodeType::File { path } => fs::write(path, decode(base)).unwrap(),
+            };
+        }
     }
 }
 
 /// Hides `hide` in `base`
-fn encode(base: &ByteStr, hide: &[u8]) -> ByteString {
+fn encode(base: &mut ByteString, hide: &[u8]) {
     let hide_per_char = (hide.len() / base.len()).max(1);
-    let mut hide_chunks = hide.chunks(hide_per_char);
+    let hide_chunks = hide.chunks(hide_per_char);
 
-    let mut out = ByteString(Vec::new());
-
-    for char in base.iter() {
-        out.push(*char);
-
-        if let Some(chunk) = hide_chunks.next() {
-            for byte in chunk {
-                let bytes = byte_to_variation_selector(*byte).to_ne_bytes();
-                out.extend_from_slice(&bytes);
-            }
-        }
-    }
-
-    // Handle remainder
-    if let Some(chunk) = hide_chunks.next() {
+    let mut index = 1; // After the first char
+    for chunk in hide_chunks {
         for byte in chunk {
-            let bytes = byte_to_variation_selector(*byte).to_ne_bytes();
-            out.extend_from_slice(&bytes);
-        }
-    }
+            let char = byte_to_variation_selector(*byte);
+            let mut bytes = [0; 4];
+            char.encode_utf8(&mut bytes);
 
-    out
+            base.splice(index..index, bytes);
+
+            index += 4;
+        }
+
+        index += 1;
+    }
 }
 
 // TODO: Be smart about interleaving len
