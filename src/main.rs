@@ -1,5 +1,6 @@
 #![feature(bstr)]
-#![feature(array_chunks)]
+#![feature(array_windows)]
+#![feature(let_chains)]
 
 use clap::{Args, Parser, Subcommand};
 use std::{
@@ -42,14 +43,13 @@ struct Decode {
 
 #[derive(Subcommand, Debug)]
 enum DecodeType {
-    /// Print as string
-    String,
-    /// Print as lossy string
-    StringLossy,
+    Normal,
     /// Print as numbers
     Bytes,
     /// Write to `path`
-    File { path: PathBuf },
+    File {
+        path: PathBuf,
+    },
 }
 
 fn main() {
@@ -73,12 +73,9 @@ fn main() {
         Decode(to_decode) => {
             let base = args.base.as_ref();
             match to_decode.decode_type {
-                DecodeType::String => println!("{}", str::from_utf8(&decode(base)).unwrap()),
-                DecodeType::StringLossy => {
-                    println!("{}", String::from_utf8_lossy(&decode(base)))
-                }
+                DecodeType::Normal => println!("{}", decode(base)),
                 DecodeType::Bytes => {
-                    for byte in decode(base) {
+                    for byte in decode(base).0 {
                         print!("{byte} ");
                     }
                 }
@@ -110,12 +107,12 @@ fn encode(base: &mut ByteString, hide: &[u8]) {
 }
 
 // TODO: Be smart about interleaving len
-fn decode(str: &ByteStr) -> Vec<u8> {
-    let mut out = Vec::new();
+fn decode(bstr: &ByteStr) -> ByteString {
+    let string = String::from_utf8_lossy(&bstr.0);
 
-    for char in str.array_chunks() {
-        let char = u32::from_ne_bytes(*char);
+    let mut out = ByteString(Vec::new());
 
+    for char in string.chars() {
         if let Some(byte) = variant_selector_to_byte(char) {
             out.push(byte);
         }
