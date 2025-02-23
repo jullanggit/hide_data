@@ -1,3 +1,5 @@
+Inspired by https://paulbutler.org/2025/smuggling-arbitrary-data-through-an-emoji/
+
 Hides arbitrary data in plain text using unicode variation selectors.
 
 According to the unicode standard, applications should just pass through unknown variation selectors, so the hidden data should survive most copy-pasting, uploading etc.
