@@ -16,3 +16,4 @@ Usage: hide_data encode normal <HIDE>
        hide_data decode file <PATH>
 ```
 For more details, just run `<COMMAND> --help`
+![brainmademark](https://brainmade.org/black-logo.svg)
